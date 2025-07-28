@@ -22,13 +22,15 @@ interface PlacesSidebarProps {
   selectedPlace: google.maps.places.PlaceResult | null;
   onPlaceSelect: (place: google.maps.places.PlaceResult | null) => void;
   map: google.maps.Map | null;
+  onOpenStreetView: (position: google.maps.LatLng, placeName: string) => void;
 }
 
 export const PlacesSidebar: React.FC<PlacesSidebarProps> = ({
   places,
   selectedPlace,
   onPlaceSelect,
-  map
+  map,
+  onOpenStreetView
 }) => {
   const [isMinimized, setIsMinimized] = useState(false);
 
@@ -66,7 +68,7 @@ export const PlacesSidebar: React.FC<PlacesSidebarProps> = ({
   };
 
   if (selectedPlace) {
-    return <PlaceDetails place={selectedPlace} onClose={() => onPlaceSelect(null)} map={map} />;
+    return <PlaceDetails place={selectedPlace} onClose={() => onPlaceSelect(null)} map={map} onOpenStreetView={onOpenStreetView} />;
   }
 
   return (

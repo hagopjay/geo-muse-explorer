@@ -3,6 +3,11 @@ import { Loader } from '@googlemaps/js-api-loader';
 import { MapControls } from './MapControls';
 import { PlacesSidebar } from './PlacesSidebar';
 import { ApiKeyInput } from './ApiKeyInput';
+import { WeatherOverlay } from './WeatherOverlay';
+import { AirQualityOverlay } from './AirQualityOverlay';
+import { StreetViewModal } from './StreetViewModal';
+import { SolarDataOverlay } from './SolarDataOverlay';
+import { MapLayerControls } from './MapLayerControls';
 import { toast } from 'sonner';
 
 interface MapContainerProps {
@@ -16,6 +21,18 @@ export const MapContainer: React.FC<MapContainerProps> = ({ apiKey }) => {
   const [places, setPlaces] = useState<google.maps.places.PlaceResult[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<google.maps.places.PlaceResult | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [mapType, setMapType] = useState<'roadmap' | 'satellite' | 'hybrid' | 'terrain'>('roadmap');
+  const [showWeather, setShowWeather] = useState(true);
+  const [showAirQuality, setShowAirQuality] = useState(true);
+  const [showSolar, setShowSolar] = useState(true);
+  const [showTraffic, setShowTraffic] = useState(false);
+  const [streetViewModal, setStreetViewModal] = useState<{isOpen: boolean, position: google.maps.LatLng | null, placeName: string}>({
+    isOpen: false,
+    position: null,
+    placeName: ''
+  });
+  const [currentPosition, setCurrentPosition] = useState<google.maps.LatLng | null>(null);
+  const [trafficLayer, setTrafficLayer] = useState<google.maps.TrafficLayer | null>(null);
 
   useEffect(() => {
     if (!apiKey || !mapRef.current) return;
@@ -27,9 +44,11 @@ export const MapContainer: React.FC<MapContainerProps> = ({ apiKey }) => {
     });
 
     loader.load().then(() => {
+      const center = { lat: 40.7128, lng: -74.0060 }; // NYC
       const mapInstance = new google.maps.Map(mapRef.current!, {
-        center: { lat: 40.7128, lng: -74.0060 }, // NYC
+        center,
         zoom: 12,
+        mapTypeId: mapType,
         styles: [
           {
             "featureType": "all",
@@ -106,6 +125,12 @@ export const MapContainer: React.FC<MapContainerProps> = ({ apiKey }) => {
         streetViewControl: false,
         fullscreenControl: false,
       });
+
+      setCurrentPosition(new google.maps.LatLng(center.lat, center.lng));
+
+      // Initialize traffic layer
+      const trafficLayerInstance = new google.maps.TrafficLayer();
+      setTrafficLayer(trafficLayerInstance);
 
       const drawingManagerInstance = new google.maps.drawing.DrawingManager({
         drawingMode: null,
@@ -192,6 +217,32 @@ export const MapContainer: React.FC<MapContainerProps> = ({ apiKey }) => {
     toast.info('Map cleared');
   };
 
+  const handleMapTypeChange = (type: 'roadmap' | 'satellite' | 'hybrid' | 'terrain') => {
+    setMapType(type);
+    if (map) {
+      map.setMapTypeId(type);
+    }
+  };
+
+  const toggleTraffic = () => {
+    if (trafficLayer && map) {
+      if (showTraffic) {
+        trafficLayer.setMap(null);
+      } else {
+        trafficLayer.setMap(map);
+      }
+      setShowTraffic(!showTraffic);
+    }
+  };
+
+  const openStreetView = (position: google.maps.LatLng, placeName: string) => {
+    setStreetViewModal({
+      isOpen: true,
+      position,
+      placeName
+    });
+  };
+
   return (
     <div className="relative h-screen w-full overflow-hidden bg-background">
       {/* Map Container */}
@@ -209,12 +260,52 @@ export const MapContainer: React.FC<MapContainerProps> = ({ apiKey }) => {
         />
       </div>
 
+      {/* Map Layer Controls */}
+      <MapLayerControls 
+        mapType={mapType}
+        onMapTypeChange={handleMapTypeChange}
+        showWeather={showWeather}
+        onToggleWeather={() => setShowWeather(!showWeather)}
+        showAirQuality={showAirQuality}
+        onToggleAirQuality={() => setShowAirQuality(!showAirQuality)}
+        showSolar={showSolar}
+        onToggleSolar={() => setShowSolar(!showSolar)}
+        showTraffic={showTraffic}
+        onToggleTraffic={toggleTraffic}
+        onToggleStreetView={() => currentPosition && openStreetView(currentPosition, 'Current Location')}
+      />
+
+      {/* Weather Overlay */}
+      {showWeather && currentPosition && (
+        <WeatherOverlay position={currentPosition} apiKey={apiKey} />
+      )}
+
+      {/* Air Quality Overlay */}
+      {showAirQuality && currentPosition && (
+        <AirQualityOverlay position={currentPosition} apiKey={apiKey} />
+      )}
+
+      {/* Solar Data Overlay */}
+      {showSolar && currentPosition && (
+        <SolarDataOverlay position={currentPosition} apiKey={apiKey} />
+      )}
+
+      {/* Street View Modal */}
+      <StreetViewModal 
+        isOpen={streetViewModal.isOpen}
+        onClose={() => setStreetViewModal({isOpen: false, position: null, placeName: ''})}
+        position={streetViewModal.position!}
+        apiKey={apiKey}
+        placeName={streetViewModal.placeName}
+      />
+
       {/* Places Sidebar */}
       <PlacesSidebar 
         places={places}
         selectedPlace={selectedPlace}
         onPlaceSelect={setSelectedPlace}
         map={map}
+        onOpenStreetView={openStreetView}
       />
     </div>
   );

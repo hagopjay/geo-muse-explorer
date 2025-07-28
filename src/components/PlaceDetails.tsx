@@ -14,13 +14,15 @@ import {
   Clock,
   Navigation,
   Image as ImageIcon,
-  MessageSquare
+  MessageSquare,
+  Camera
 } from 'lucide-react';
 
 interface PlaceDetailsProps {
   place: google.maps.places.PlaceResult;
   onClose: () => void;
   map: google.maps.Map | null;
+  onOpenStreetView: (position: google.maps.LatLng, placeName: string) => void;
 }
 
 interface PlaceDetails {
@@ -32,7 +34,7 @@ interface PlaceDetails {
   formatted_address?: string;
 }
 
-export const PlaceDetails: React.FC<PlaceDetailsProps> = ({ place, onClose, map }) => {
+export const PlaceDetails: React.FC<PlaceDetailsProps> = ({ place, onClose, map, onOpenStreetView }) => {
   const [details, setDetails] = useState<PlaceDetails | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -173,14 +175,25 @@ export const PlaceDetails: React.FC<PlaceDetailsProps> = ({ place, onClose, map 
                   )}
                 </div>
 
-                <Button 
-                  onClick={getDirections}
-                  variant="gradient"
-                  className="w-full mt-4"
-                >
-                  <Navigation className="h-4 w-4" />
-                  Get Directions
-                </Button>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  <Button 
+                    onClick={getDirections}
+                    variant="gradient"
+                    className="text-xs"
+                  >
+                    <Navigation className="h-3 w-3" />
+                    Directions
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => place.geometry?.location && onOpenStreetView(place.geometry.location, place.name || 'Place')}
+                    variant="outline"
+                    className="text-xs"
+                  >
+                    <Camera className="h-3 w-3" />
+                    Street View
+                  </Button>
+                </div>
               </div>
 
               {/* Hours */}
